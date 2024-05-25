@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"math/big"
 	"testing"
+
+	"github.com/ethereum/go-ethereum/common"
 )
 
 var data1024, _ = hex.DecodeString("0000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000000300000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000000000000000000003")
@@ -97,6 +99,46 @@ func TestCell(t *testing.T) {
 	amt := ref.MustLoadBigCoins()
 	if amt.Uint64() != amount {
 		t.Fatal("coins ref not eq")
+		return
+	}
+}
+
+func TestFairMintEventCell(t *testing.T) {
+	hexStr := "b5ee9c7241010101002d000055814d46f78008d0d4580cd8f09522be7c0390a7a632bda4a99291c435b767c95367ebe78e9aebd1a94a20011212633c"
+	boc := common.Hex2Bytes(hexStr)
+	cl, err := FromBOC(boc)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+
+	lc := cl.BeginParse()
+	i, err := lc.LoadUInt(32)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+
+	if i != 2169325303 {
+		t.Fatal("32 bit not eq 2169325303")
+		return
+	}
+
+	addr2, err := lc.LoadAddr()
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+
+	fmt.Printf("addr: %s\n", addr2.String())
+	amt, err := lc.LoadCoins()
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+
+	if amt != 1000000000000 {
+		t.Fatal("amount not eq")
 		return
 	}
 }
