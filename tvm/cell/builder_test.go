@@ -160,10 +160,10 @@ func TestRefererSetEvent(t *testing.T) {
 		return
 	}
 
-	// if i != 2169325303 {
-	// 	t.Fatal("32 bit not eq 2169325303")
-	// 	return
-	// }
+	if i != 2740046754 {
+		t.Fatal("32 bit not eq 2740046754")
+		return
+	}
 
 	owner, err := lc.LoadAddr()
 	if err != nil {
