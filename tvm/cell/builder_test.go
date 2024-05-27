@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/xssnick/tonutils-go/address"
 )
 
 var data1024, _ = hex.DecodeString("0000000000000000000000000000000000000000000000000000000000000003000000000000000000000000000000000000000000000000000000000000000300000000000000000000000000000000000000000000000000000000000000030000000000000000000000000000000000000000000000000000000000000003")
@@ -201,6 +202,170 @@ func TestRefererSetEvent(t *testing.T) {
 		t.Fatal(err)
 		return
 	}
+}
+
+type Coins uint64
+
+type TradeInfo struct {
+	Referrer         *address.Address
+	ReferrerAmount   Coins
+	UpReferrer       *address.Address
+	UpReferrerAmount Coins
+	FeeValue         Coins
+	RemainAmount     Coins
+}
+
+func LoadTradeInfo(slice *Slice) TradeInfo {
+	sc0 := slice
+	referrer := sc0.MustLoadAddr()
+	referrerAmount := sc0.MustLoadCoins()
+	upReferrer := sc0.MustLoadAddr()
+	upReferrerAmount := sc0.MustLoadCoins()
+	feeValue := sc0.MustLoadCoins()
+
+	sc1, err := sc0.LoadRef()
+	if err != nil {
+		fmt.Println(err)
+		return TradeInfo{}
+	}
+	remainAmount := sc1.MustLoadCoins()
+	return TradeInfo{
+		Referrer:         referrer,
+		ReferrerAmount:   Coins(referrerAmount),
+		UpReferrer:       upReferrer,
+		UpReferrerAmount: Coins(upReferrerAmount),
+		FeeValue:         Coins(feeValue),
+		RemainAmount:     Coins(remainAmount),
+	}
+}
+
+func TestBuyEvent(t *testing.T) {
+	// jetton master(main) 	contract address: kQADonXe1GRJ7UX3hl3Ql80XARitTxrStrywwZsDGF9v3e1U
+	// txid: https://testnet.tonviewer.com/transaction/2a39a484a1d4c8eacccaf33db87f4d16464b5e4efced8dd5d10cae75221e69ff
+	hexStr := "b5ee9c7201010301008c000165a2328a25800bc2748303ab5db1d613d360a3138cc322aa67a6484ae9616288acc8baee2c8e2802625a00e72c36e2e359a74203010197800bc2748303ab5db1d613d360a3138cc322aa67a6484ae9616288acc8baee2c8e25d4c1001784e9060756bb63ac27a6c1462719864554cf4c9095d2c2c511599175dc591c4a7100c0c350200200094012c99208"
+	boc := common.Hex2Bytes(hexStr)
+	cl, err := FromBOC(boc)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	lc := cl.BeginParse()
+	i, err := lc.LoadUInt(32)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+
+	fmt.Printf("prefix: %d\n", i)
+	if i != 2721221157 {
+		t.Fatal("32 bit not eq 2721221157")
+		return
+	}
+
+	addr2, err := lc.LoadAddr()
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+
+	fmt.Printf("addr: %s\n", addr2.String())
+	amt, err := lc.LoadCoins()
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+
+	if amt != 2*1e7 {
+		t.Fatal("amount not eq")
+		return
+	}
+
+	tokenAmount, err := lc.LoadCoins()
+	fmt.Printf("token amount: %d\n", tokenAmount)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	lastTokenPrice, err := lc.LoadCoins()
+	fmt.Printf("last token price: %d\n", lastTokenPrice)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+
+	tradeInfoRef, err := lc.LoadRef()
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	tradeSlice := tradeInfoRef.MustToCell().BeginParse()
+	tradeInfo := LoadTradeInfo(tradeSlice)
+	fmt.Printf("referrer: %s, referrer amount: %d, up referrer: %s, up referrer amount: %d, fee value: %d, remain amount: %d\n", tradeInfo.Referrer.String(), tradeInfo.ReferrerAmount, tradeInfo.UpReferrer.String(), tradeInfo.UpReferrerAmount, tradeInfo.FeeValue, tradeInfo.RemainAmount)
+}
+
+func TestSellEvent(t *testing.T) {
+	// jetton master(main) 	contract address: kQADonXe1GRJ7UX3hl3Ql80XARitTxrStrywwZsDGF9v3e1U
+	// txid: https://testnet.tonviewer.com/transaction/ca39f790cb8bef2670264f14748119f57a4ae62a38e05de8ff4ebf3afbe79fa8
+	hexStr := "b5ee9c7201010301008a00016355cbd8fb800bc2748303ab5db1d613d360a3138cc322aa67a6484ae9616288acc8baee2c8e2770e8b0e470de4df820000203010197800bc2748303ab5db1d613d360a3138cc322aa67a6484ae9616288acc8baee2c8e251fa3001784e9060756bb63ac27a6c1462719864554cf4c9095d2c2c511599175dc591c497f80c077d9200200073b874588"
+	boc := common.Hex2Bytes(hexStr)
+	cl, err := FromBOC(boc)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	lc := cl.BeginParse()
+	i, err := lc.LoadUInt(32)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+
+	fmt.Printf("prefix: %d\n", i)
+	if i != 1439422715 {
+		t.Fatal("32 bit not eq 1439422715")
+		return
+	}
+
+	addr2, err := lc.LoadAddr()
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+
+	fmt.Printf("addr: %s\n", addr2.String())
+	amt, err := lc.LoadCoins()
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+
+	fmt.Printf("amount: %d\n", amt)
+	if amt != 12088408 {
+		t.Fatal("amount not eq")
+		return
+	}
+
+	tokenAmount, err := lc.LoadCoins()
+	fmt.Printf("token amount: %d\n", tokenAmount)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	lastTokenPrice, err := lc.LoadCoins()
+	fmt.Printf("last token price: %d\n", lastTokenPrice)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+
+	tradeInfoRef, err := lc.LoadRef()
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	tradeSlice := tradeInfoRef.MustToCell().BeginParse()
+	tradeInfo := LoadTradeInfo(tradeSlice)
+	fmt.Printf("referrer: %s, referrer amount: %d, up referrer: %s, up referrer amount: %d, fee value: %d, remain amount: %d\n", tradeInfo.Referrer.String(), tradeInfo.ReferrerAmount, tradeInfo.UpReferrer.String(), tradeInfo.UpReferrerAmount, tradeInfo.FeeValue, tradeInfo.RemainAmount)
 }
 
 func TestCell24(t *testing.T) {
