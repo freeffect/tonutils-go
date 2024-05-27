@@ -104,7 +104,7 @@ func TestCell(t *testing.T) {
 }
 
 func TestFairMintEventCell(t *testing.T) {
-	hexStr := "b5ee9c7241010101002d000055814d46f78008d0d4580cd8f09522be7c0390a7a632bda4a99291c435b767c95367ebe78e9aebd1a94a20011212633c"
+	hexStr := "b5ee9c7201010101002c000053814d46f7800bc2748303ab5db1d613d360a3138cc322aa67a6484ae9616288acc8baee2c8e2877359401"
 	boc := common.Hex2Bytes(hexStr)
 	cl, err := FromBOC(boc)
 	if err != nil {
@@ -137,8 +137,68 @@ func TestFairMintEventCell(t *testing.T) {
 		return
 	}
 
-	if amt != 1000000000000 {
+	if amt != 1000000000 {
 		t.Fatal("amount not eq")
+		return
+	}
+}
+
+func TestRefererSetEvent(t *testing.T) {
+	hexStr := "b5ee9c7201010101004900008da351cba2800bc2748303ab5db1d613d360a3138cc322aa67a6484ae9616288acc8baee2c8e3003ed900ba6d49c45c615e8d2000d161596a6807c6ae2914a18b69c15a3017022ae"
+	boc := common.Hex2Bytes(hexStr)
+	cl, err := FromBOC(boc)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+
+	lc := cl.BeginParse()
+	i, err := lc.LoadUInt(32)
+	fmt.Printf("prefix: %d\n", i)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+
+	// if i != 2169325303 {
+	// 	t.Fatal("32 bit not eq 2169325303")
+	// 	return
+	// }
+
+	owner, err := lc.LoadAddr()
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+
+	fmt.Printf("addr: %s\n", owner.String())
+	// refer to: https://github.com/ton-blockchain/TEPs/blob/master/text/0002-address.md
+	// Mainnet bounceable:  EQBeE6QYHVrtjrCemwUYnGYZFVM9MkJXSwsURWZF13FkccVo
+	// Mainnet non-bounceable:  UQBeE6QYHVrtjrCemwUYnGYZFVM9MkJXSwsURWZF13FkcZit
+	// Testnet bounceable:  kQBeE6QYHVrtjrCemwUYnGYZFVM9MkJXSwsURWZF13FkcX7i
+	// Testnet non-bounceable:  0QBeE6QYHVrtjrCemwUYnGYZFVM9MkJXSwsURWZF13FkcSMn
+	if owner.String() != "EQBeE6QYHVrtjrCemwUYnGYZFVM9MkJXSwsURWZF13FkccVo" &&
+		owner.String() != "UQBeE6QYHVrtjrCemwUYnGYZFVM9MkJXSwsURWZF13FkcZit" &&
+		owner.String() != "kQBeE6QYHVrtjrCemwUYnGYZFVM9MkJXSwsURWZF13FkcX7i" &&
+		owner.String() != "0QBeE6QYHVrtjrCemwUYnGYZFVM9MkJXSwsURWZF13FkcSMn" {
+		t.Fatal("addr not eq")
+		return
+	}
+	referrer, err := lc.LoadAddr()
+	fmt.Printf("addr: %s\n", referrer.String())
+	// Mainnet bounceable:  EQD7ZALptScRcYV6NIADRYVlqaAfGrikUoYtpwVowFwIq2uo
+	// Mainnet non-bounceable:  UQD7ZALptScRcYV6NIADRYVlqaAfGrikUoYtpwVowFwIqzZt
+	// Testnet bounceable:  kQD7ZALptScRcYV6NIADRYVlqaAfGrikUoYtpwVowFwIq9Ai
+	// Testnet non-bounceable:  0QD7ZALptScRcYV6NIADRYVlqaAfGrikUoYtpwVowFwIq43n
+	if referrer.String() != "EQD7ZALptScRcYV6NIADRYVlqaAfGrikUoYtpwVowFwIq2uo" &&
+		referrer.String() != "UQD7ZALptScRcYV6NIADRYVlqaAfGrikUoYtpwVowFwIqzZt" &&
+		referrer.String() != "kQD7ZALptScRcYV6NIADRYVlqaAfGrikUoYtpwVowFwIq9Ai" &&
+		referrer.String() != "0QD7ZALptScRcYV6NIADRYVlqaAfGrikUoYtpwVowFwIq43n" {
+		t.Fatal("referrer not eq")
+		return
+	}
+	if err != nil {
+		t.Fatal(err)
 		return
 	}
 }
