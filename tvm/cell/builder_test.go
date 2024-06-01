@@ -368,6 +368,128 @@ func TestSellEvent(t *testing.T) {
 	fmt.Printf("referrer: %s, referrer amount: %d, up referrer: %s, up referrer amount: %d, fee value: %d, remain amount: %d\n", tradeInfo.Referrer.String(), tradeInfo.ReferrerAmount, tradeInfo.UpReferrer.String(), tradeInfo.UpReferrerAmount, tradeInfo.FeeValue, tradeInfo.RemainAmount)
 }
 
+func parseTransferNotifiy(hexStr string) {
+	fmt.Println("----------------------")
+
+	boc := common.Hex2Bytes(hexStr)
+	cl, err := FromBOC(boc)
+	if err != nil {
+		fmt.Printf("fromBOC error: %s\n", err)
+		return
+	}
+	lc := cl.BeginParse()
+
+	prefix, err := lc.LoadUInt(32)
+	if err != nil {
+		fmt.Printf("load prefix error: %s\n", err)
+		return
+	}
+	fmt.Print("prefix: ", prefix, "\n")
+
+	i, err := lc.LoadUInt(64)
+	fmt.Print("query_id: ", i, "\n")
+	if err != nil {
+		fmt.Printf("load uint64 error: %s\n", err)
+		return
+	}
+
+	amount, err := lc.LoadCoins()
+	if err != nil {
+		fmt.Printf("load coins error: %s\n", err)
+		return
+	}
+
+	fmt.Printf("amount: %d\n", amount)
+	addr, err := lc.LoadAddr()
+	if err != nil {
+		fmt.Printf("load addr error: %s\n", err)
+		return
+	}
+	fmt.Printf("addr: %s\n", addr)
+
+	forwardPayload, err := lc.LoadRef()
+	if err != nil {
+		fmt.Printf("load ref cell error: %s\n", err)
+		return
+	}
+	payload := forwardPayload.MustToCell().BeginParse()
+	sc0 := payload
+	prefix2 := sc0.MustLoadUInt(32)
+	fmt.Printf("prefix2: %d\n", prefix2)
+	token_walelt := sc0.MustLoadAddr()
+	fmt.Printf("token_walelt: %s\n", token_walelt.String())
+	minLPOut := sc0.MustLoadCoins()
+	fmt.Printf("minLPOut: %d\n", minLPOut)
+}
+
+//	message(0x7362d09c) TokenNotification {
+//		query_id: Int as uint64;
+//		amount: Int as coins;
+//		from: Address;
+//		forward_payload: Slice as remaining;
+//	}
+func TestTransferNotification(t *testing.T) {
+	successed := "b5ee9c7201010201005e0001647362d09c001c3742bd829d18405f767a0801f6c805d36a4e22e30af46900068b0acb53403e357148a50c5b4e0ad180b8115701004dfcf9e58f80022a16a3164c4d5aa3133f3110ff10496e00ca8ac8abeffc5027e024d33480c3e203"
+	parseTransferNotifiy(successed)
+	fmt.Println("----------------------")
+	fmt.Printf("%s\n", successed)
+}
+
+func TestPayoutCompleteEvent(t *testing.T) {
+	// Payouts contract address: kQAiL_EralRCIRBPR4o4uF25x87AVcBBqA_oEf9qawDXOTVc
+	// payout0 txid: b0b38406e7f16db8d02347c132f7aff82f990c993fa5b07edebc93e7bfd52c06
+	// payout1 txid: 0041cb5d41ca0f23c0bedbc384fc4ee7c49a89b085e3cb188f2e37d494d3b826
+	// payout2 txid: 1a77ceacc3f2d4e03092e10d020d8e217d9ad168d3530eb569b22d2edcbaed01
+	hexStr := "b5ee9c7201010101003b000071d1996541800bc2748303ab5db1d613d360a3138cc322aa67a6484ae9616288acc8baee2c8e27312d00000000000000000000000000000008af"
+	// hexStr := "b5ee9c7201010101003b000071d1996541800bc2748303ab5db1d613d360a3138cc322aa67a6484ae9616288acc8baee2c8e27312d000000000000000002000000000000115d"
+	// hexStr := "b5ee9c7201010101003b000071d1996541800bc2748303ab5db1d613d360a3138cc322aa67a6484ae9616288acc8baee2c8e27312d0000000000000000040000000000001a0b"
+	boc := common.Hex2Bytes(hexStr)
+	cl, err := FromBOC(boc)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	lc := cl.BeginParse()
+	i, err := lc.LoadUInt(32)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+
+	fmt.Printf("prefix: %d\n", i)
+	if i != 3516491073 {
+		t.Fatal("32 bit not eq 3516491073")
+		return
+	}
+
+	addr2, err := lc.LoadAddr()
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+
+	fmt.Printf("addr: %s\n", addr2.String())
+	value, err := lc.LoadCoins()
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+
+	fmt.Printf("value: %d\n", value)
+	nonce, err := lc.LoadUInt(64)
+	fmt.Printf("nonce: %d\n", nonce)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	payout_id, err := lc.LoadUInt(64)
+	fmt.Printf("payout_id: %d\n", payout_id)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+}
+
 func TestCell24(t *testing.T) {
 	c := BeginCell()
 
