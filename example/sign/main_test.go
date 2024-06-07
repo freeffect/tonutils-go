@@ -25,6 +25,18 @@ func createTicketCell(address *address.Address, amount *big.Int, nonce, expire, 
 	return c.EndCell(), nil
 }
 
+func createWithdrawTicketContentCell(address *address.Address, amount uint64, nonce, expire, payout_id uint32, user_jetton_wallet *address.Address) (*cell.Cell, error) {
+	c := cell.BeginCell()
+	c.MustStoreUInt(1162710104, 32) // 1162710104 is prefix for withdraw ticket content, can get from contract abi
+	c.MustStoreAddr(address)
+	c.MustStoreUInt(amount, 64)
+	c.MustStoreUInt(uint64(nonce), 32)
+	c.MustStoreUInt(uint64(expire), 32)
+	c.MustStoreUInt(uint64(payout_id), 32)
+	c.MustStoreAddr(user_jetton_wallet)
+	return c.EndCell(), nil
+}
+
 func signTicketCellByPrivKey() ([]byte, ed25519.PublicKey, error) {
 	w, err := wallet.FromSeed(nil, strings.Split(os.Getenv("WALLET_SEED"), " "), wallet.V4R2) // 24 mnemonic words
 	if err != nil {
@@ -79,8 +91,42 @@ func signTicketCell() ([]byte, error) {
 	return signatureWithPadding, nil
 }
 
+func signWithdrawTicketContentCell() ([]byte, error) {
+	addr := address.MustParseAddr("EQBeE6QYHVrtjrCemwUYnGYZFVM9MkJXSwsURWZF13FkccVo")
+	amount := new(big.Int).SetUint64(1000 * 1_000_000_000).Uint64() // 1000 TON
+	oneWeekLater := uint32(2234567890)
+	nonce := uint32(0)
+	payout_id := uint32(1111)
+	user_jetton_wallet := address.MustParseAddr("EQCqm4niLh9ozIEmk4Ub2Avx0Ba0jiGOlc25jdlfUs3zlxof")
+	c, err := createWithdrawTicketContentCell(addr, amount, nonce, oneWeekLater, payout_id, user_jetton_wallet)
+	if err != nil {
+		return nil, err
+	}
+	priv, pub, err := signTicketCellByPrivKey()
+	if err != nil {
+		return nil, err
+	}
+
+	signature := c.Sign(priv)
+	fmt.Printf("signature: %s\n", hex.EncodeToString(signature))
+	if !c.Verify(pub, signature) {
+		return nil, fmt.Errorf("signature verification failed")
+	}
+
+	return signature, nil // ce60f9c3b000d2f30d60eea443cc25862a7d1972c83777741d920fc53c3343ccb83e300f0d8bbe98f9988e624cb0cc89dab9f559eb1e7a1e603f155ef7b9380a
+}
+
 func TestSignVerify(t *testing.T) {
 	b, err := signTicketCell()
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	fmt.Println(hex.EncodeToString(b))
+}
+
+func TestJettonSignVerify(t *testing.T) {
+	b, err := signWithdrawTicketContentCell()
 	if err != nil {
 		t.Fatal(err)
 		return
