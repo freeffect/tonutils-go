@@ -145,6 +145,7 @@ func TestFairMintEventCell(t *testing.T) {
 }
 
 func TestRefererSetEvent(t *testing.T) {
+	// Referrer parent contract address: kQD3v3OY94eF5W9is51HSlUh7BDGH8K771G0s7bl5l8jQMnG
 	hexStr := "b5ee9c7201010101004900008da351cba2800bc2748303ab5db1d613d360a3138cc322aa67a6484ae9616288acc8baee2c8e3003ed900ba6d49c45c615e8d2000d161596a6807c6ae2914a18b69c15a3017022ae"
 	boc := common.Hex2Bytes(hexStr)
 	cl, err := FromBOC(boc)
@@ -488,6 +489,62 @@ func TestPayoutCompleteEvent(t *testing.T) {
 		t.Fatal(err)
 		return
 	}
+}
+
+func TestJettonPayoutCompleteEvent(t *testing.T) {
+	// txid: https://testnet.tonviewer.com/transaction/ed86304d49d77f19ce98428034390f963b9d0253603cc4cdddf04803c0f91cde
+	hexStr := "b5ee9c720101010100590000ad1df4b988800bc2748303ab5db1d613d360a3138cc322aa67a6484ae9616288acc8baee2c8e2000001d1a94a200000000000000008af002aa6e2788b87da332049a4e146f602fc7405ad238863a5736e637657d4b37ce5e"
+	boc := common.Hex2Bytes(hexStr)
+	cl, err := FromBOC(boc)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	lc := cl.BeginParse()
+	i, err := lc.LoadUInt(32)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+
+	fmt.Printf("prefix: %d\n", i)
+	if i != 502577544 {
+		t.Fatal("32 bit not eq 502577544")
+		return
+	}
+
+	addr2, err := lc.LoadAddr()
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+
+	fmt.Printf("addr: %s\n", addr2.String())
+	value, err := lc.LoadUInt(64)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+
+	fmt.Printf("value: %d\n", value)
+	nonce, err := lc.LoadUInt(32)
+	fmt.Printf("nonce: %d\n", nonce)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	payout_id, err := lc.LoadUInt(32)
+	fmt.Printf("payout_id: %d\n", payout_id)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	user_jetton_wallet, err := lc.LoadAddr()
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	fmt.Printf("user_jetton_wallet: %s\n", user_jetton_wallet.String())
 }
 
 func TestCell24(t *testing.T) {
