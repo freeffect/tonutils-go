@@ -37,6 +37,34 @@ func createWithdrawTicketContentCell(address *address.Address, amount uint64, no
 	return c.EndCell(), nil
 }
 
+// TON payouts
+func createTonWithdrawTicketContentCell(address *address.Address, amount uint64, nonce, expire, payout_id uint64) (*cell.Cell, error) {
+	c := cell.BeginCell()
+	c.MustStoreUInt(1763882716, 32) // 1763882716 is prefix for withdraw ticket content, can get from contract abi
+	c.MustStoreAddr(address)
+	c.MustStoreUInt(amount, 64)
+	c.MustStoreUInt(nonce, 64)
+	c.MustStoreUInt(expire, 64)
+	c.MustStoreUInt(payout_id, 64)
+	return c.EndCell(), nil
+}
+
+func createTonWithdrawTicketCell(address *address.Address, amount uint64, nonce, expire, payout_id uint64, signature []byte) (*cell.Cell, error) {
+	if len(signature) != 64 {
+		return nil, fmt.Errorf("signature length must be 64")
+	}
+	c := cell.BeginCell()
+	c.MustStoreUInt(838693908, 32) // 838693908 is prefix for withdraw ticket, can get from contract abi
+	signatureCell := cell.BeginCell().MustStoreSlice(signature, 64*8).EndCell()
+	c.MustStoreUInt(1763882716, 32) // 1763882716 is prefix for withdraw ticket content, can get from contract abi
+	c.MustStoreAddr(address)
+	c.MustStoreUInt(amount, 64)
+	c.MustStoreUInt(nonce, 64)
+	c.MustStoreUInt(expire, 64)
+	c.MustStoreUInt(payout_id, 64)
+	return c.MustStoreRef(signatureCell).EndCell(), nil
+}
+
 func signTicketCellByPrivKey() ([]byte, ed25519.PublicKey, error) {
 	w, err := wallet.FromSeed(nil, strings.Split(os.Getenv("WALLET_SEED"), " "), wallet.V4R2) // 24 mnemonic words
 	if err != nil {
@@ -91,6 +119,36 @@ func signTicketCell() ([]byte, error) {
 	return signatureWithPadding, nil
 }
 
+func signTonTicketCell() (string, error) {
+	addr := address.MustParseAddr("0QBeE6QYHVrtjrCemwUYnGYZFVM9MkJXSwsURWZF13FkcSMn")
+	amount := uint64(1_000_000_000 / 100) // 0.01 TON
+	// oneWeekLater := uint64(time.Now().Unix() + 7*24*60*60)
+	oneWeekLater := uint64(21234567890)
+	nonce := uint64(0)
+	payout_id := uint64(1111)
+	c, err := createTonWithdrawTicketContentCell(addr, amount, nonce, oneWeekLater, payout_id)
+	if err != nil {
+		return "", err
+	}
+	priv, pub, err := signTicketCellByPrivKey()
+	if err != nil {
+		return "", err
+	}
+
+	signature := c.Sign(priv)
+	fmt.Printf("signature: %s\n", hex.EncodeToString(signature))
+	if !c.Verify(pub, signature) {
+		return "", fmt.Errorf("signature verification failed")
+	}
+
+	ticketCell, err := createTonWithdrawTicketCell(addr, amount, nonce, oneWeekLater, payout_id, signature)
+	if err != nil {
+		return "", err
+	}
+
+	return base64.StdEncoding.EncodeToString(ticketCell.ToBOC()), nil
+}
+
 func signWithdrawTicketContentCell() ([]byte, error) {
 	addr := address.MustParseAddr("EQBeE6QYHVrtjrCemwUYnGYZFVM9MkJXSwsURWZF13FkccVo")
 	amount := new(big.Int).SetUint64(1000 * 1_000_000_000).Uint64() // 1000 TON
@@ -132,4 +190,16 @@ func TestJettonSignVerify(t *testing.T) {
 		return
 	}
 	fmt.Println(hex.EncodeToString(b))
+}
+
+func TestTonSignVerify(t *testing.T) {
+	b, err := signTonTicketCell()
+	// ts: te6cckEBAgEAjwABkzH9dBRpIrbcgAvCdIMDq12x1hPTYKMTjMMiqmemSErpYWKIrMi67iyOIAAAAAATEtAAAAAAAAAAAAAAAACeNblaQAAAAAAAAIrwAQCARuk/R+tz09BHWlNPtdj3VJ/B+kHGM4+8tY52/mMNb4xrgeu09k9qBI8KIdBhEDLFDgAr1OCBpscITXp8kfkUAcqJbfc=
+	// go: te6cckEBAgEAjwABkzH9dBRpIrbcgAvCdIMDq12x1hPTYKMTjMMiqmemSErpYWKIrMi67iyOIAAAAAATEtAAAAAAAAAAAAAAAACeNblaQAAAAAAAAIrwAQCARuk/R+tz09BHWlNPtdj3VJ/B+kHGM4+8tY52/mMNb4xrgeu09k9qBI8KIdBhEDLFDgAr1OCBpscITXp8kfkUAcqJbfc=
+	fmt.Printf("b: %s\n", b)
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	fmt.Println(b)
 }
